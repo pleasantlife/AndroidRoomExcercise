@@ -7,7 +7,15 @@ import androidx.room.Room
 import androidx.room.migration.Migration
 import com.gandan.roomexercise.R
 import com.gandan.roomexercise.data.repository.AppDatabase
+import com.gandan.roomexercise.data.repository.UserDao
 import com.gandan.roomexercise.model.User
+import io.reactivex.Completable
+import io.reactivex.Flowable
+import io.reactivex.Observable
+import io.reactivex.Single
+import io.reactivex.android.schedulers.AndroidSchedulers
+import io.reactivex.disposables.CompositeDisposable
+import io.reactivex.schedulers.Schedulers
 
 class MainActivity : AppCompatActivity() {
 
@@ -15,11 +23,11 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
-        
-        val db = Room.databaseBuilder(
+
+        /* val db = Room.databaseBuilder(
             applicationContext,
             AppDatabase::class.java, "user-database"
-        ).addMigrations().build()
+        ).addMigrations().build()*/
 
         val inputUser = User(
             1,
@@ -39,12 +47,38 @@ class MainActivity : AppCompatActivity() {
             "lee"
         )
 
-        db.userDao().insertAll(inputUser)
+        val db = Room.databaseBuilder(
+            applicationContext,
+            AppDatabase::class.java,
+            "user-database"
+        ).build();
 
-        for(user in db.userDao().getAll()){
-            Log.w("userInfo", "${user.firstName} ${user.lastName}")
+
+        val compositeDisposable = CompositeDisposable();
+
+        compositeDisposable.add(
+            Single.just(db).subscribeOn(Schedulers.io()).observeOn(AndroidSchedulers.mainThread()).subscribe({
+                    db -> db.userDao().insertAll(inputUser, inputUserTwo, inputUserThree)
+            }, {error -> Log.e("Error", "${error.message}")})
+        )
+
+        compositeDisposable.dispose()
+
+
+
+        compositeDisposable.add(Flowable.fromCallable{
+            return@fromCallable db.userDao().getAll()
+        }.subscribeOn(Schedulers.io()).observeOn(AndroidSchedulers.mainThread()).subscribe({
+                success -> success.doOnNext {
+            for(user in it){
+                Log.w("user", "${user.lastName}+${user.firstName}")
+            }
         }
+        }, {error -> Log.e("Error2", "${error.message}")}))
 
+
+        compositeDisposable.dispose()
 
     }
+
 }

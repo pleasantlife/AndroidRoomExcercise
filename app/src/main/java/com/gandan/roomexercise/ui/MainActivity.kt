@@ -16,8 +16,15 @@ import io.reactivex.Single
 import io.reactivex.android.schedulers.AndroidSchedulers
 import io.reactivex.disposables.CompositeDisposable
 import io.reactivex.schedulers.Schedulers
+import kotlinx.android.synthetic.main.activity_main.*
 
 class MainActivity : AppCompatActivity() {
+
+    private val db = Room.databaseBuilder(
+        applicationContext,
+        AppDatabase::class.java,
+        "user-database"
+    )
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -29,6 +36,18 @@ class MainActivity : AppCompatActivity() {
             AppDatabase::class.java, "user-database"
         ).addMigrations().build()*/
 
+
+
+
+        saveName.setOnClickListener {
+            saveUserData()
+        }
+
+        loadUserName.setOnClickListener{ loadUserData()  }
+
+    }
+
+    fun saveUserData(){
         val inputUser = User(
             1,
             "android",
@@ -47,38 +66,37 @@ class MainActivity : AppCompatActivity() {
             "lee"
         )
 
-        val db = Room.databaseBuilder(
-            applicationContext,
-            AppDatabase::class.java,
-            "user-database"
-        ).build();
+
+        val observable = Observable.just(inputUser, inputUserTwo, inputUserThree).observeOn(Schedulers.io()).subscribeOn(AndroidSchedulers.mainThread())
 
 
-        val compositeDisposable = CompositeDisposable();
+        val compositeDisposable = CompositeDisposable()
 
         compositeDisposable.add(
-            Single.just(db).subscribeOn(Schedulers.io()).observeOn(AndroidSchedulers.mainThread()).subscribe({
-                    db -> db.userDao().insertAll(inputUser, inputUserTwo, inputUserThree)
-            }, {error -> Log.e("Error", "${error.message}")})
+            observable.subscribe {
+                db.build().userDao().insertAll(it)
+            }
         )
 
-        compositeDisposable.dispose()
+        compositeDisposable.dispose();
 
+    }
 
+    fun loadUserData() {
+        val compositeDisposable = CompositeDisposable()
 
-        compositeDisposable.add(Flowable.fromCallable{
-            return@fromCallable db.userDao().getAll()
-        }.subscribeOn(Schedulers.io()).observeOn(AndroidSchedulers.mainThread()).subscribe({
-                success -> success.doOnNext {
-            for(user in it){
-                Log.w("user", "${user.lastName}+${user.firstName}")
+        val observable = Observable.fromCallable {
+            var data = db.build().userDao().getAll()
+            return@fromCallable data
+        }.observeOn(Schedulers.io()).subscribeOn(AndroidSchedulers.mainThread())
+
+        compositeDisposable.add(
+            observable.subscribe { userList ->
+                userList.forEach {
+                    Log.w("userName", "${it[0].firstName}")
+                }
             }
-        }
-        }, {error -> Log.e("Error2", "${error.message}")}))
-
-
-        compositeDisposable.dispose()
-
+        )
     }
 
 }

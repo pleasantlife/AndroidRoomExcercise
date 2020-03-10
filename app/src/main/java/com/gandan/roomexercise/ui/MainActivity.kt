@@ -2,17 +2,15 @@ package com.gandan.roomexercise.ui
 
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
+import android.os.Handler
 import android.util.Log
+import android.widget.Toast
 import androidx.room.Room
-import androidx.room.migration.Migration
+import androidx.room.RoomDatabase
 import com.gandan.roomexercise.R
 import com.gandan.roomexercise.data.repository.AppDatabase
-import com.gandan.roomexercise.data.repository.UserDao
 import com.gandan.roomexercise.model.User
-import io.reactivex.Completable
-import io.reactivex.Flowable
 import io.reactivex.Observable
-import io.reactivex.Single
 import io.reactivex.android.schedulers.AndroidSchedulers
 import io.reactivex.disposables.CompositeDisposable
 import io.reactivex.schedulers.Schedulers
@@ -20,83 +18,85 @@ import kotlinx.android.synthetic.main.activity_main.*
 
 class MainActivity : AppCompatActivity() {
 
-    private val db = Room.databaseBuilder(
-        applicationContext,
-        AppDatabase::class.java,
-        "user-database"
-    )
+    private lateinit var db: RoomDatabase.Builder<AppDatabase>
+    private val compositeDisposable = CompositeDisposable();
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
 
-        /* val db = Room.databaseBuilder(
+        db = Room.databaseBuilder(
             applicationContext,
-            AppDatabase::class.java, "user-database"
-        ).addMigrations().build()*/
-
-
+            AppDatabase::class.java, "test-database"
+        ).addMigrations().fallbackToDestructiveMigration()
 
 
         saveName.setOnClickListener {
             saveUserData()
         }
 
-        loadUserName.setOnClickListener{ loadUserData()  }
+        loadUserName.setOnClickListener { loadUserData() }
 
     }
 
-    fun saveUserData(){
+    private fun saveUserData() {
         val inputUser = User(
-            1,
+            null,
             "android",
             "kim"
         )
 
         val inputUserTwo = User(
-            2,
+            null,
             "android",
             "park"
         )
 
         val inputUserThree = User(
-            3,
+            null,
             "android",
             "lee"
         )
 
 
-        val observable = Observable.just(inputUser, inputUserTwo, inputUserThree).observeOn(Schedulers.io()).subscribeOn(AndroidSchedulers.mainThread())
+        /*val observable = Observable.just(inputUser, inputUserTwo, inputUserThree).subscribeOn(Schedulers.io())
+            *//*.observeOn(AndroidSchedulers.mainThread())*//*
+            .doOnComplete { Log.w("Complete::", "one") }.doOnError { Log.e("ERROR!::", "${it.message}") }
 
-
-        val compositeDisposable = CompositeDisposable()
 
         compositeDisposable.add(
             observable.subscribe {
                 db.build().userDao().insertAll(it)
+                //Log.w("User", "${it.lastName}")
             }
-        )
+        )*/
 
-        compositeDisposable.dispose();
+        //compositeDisposable.dispose()
+
 
     }
 
-    fun loadUserData() {
-        val compositeDisposable = CompositeDisposable()
+    private fun loadUserData() {
 
-        val observable = Observable.fromCallable {
-            var data = db.build().userDao().getAll()
-            return@fromCallable data
-        }.observeOn(Schedulers.io()).subscribeOn(AndroidSchedulers.mainThread())
+        /*val observable = Observable.fromCallable {
+            return@fromCallable db.build().userDao().getAll()
+        }.subscribeOn(Schedulers.io()).observeOn(AndroidSchedulers.mainThread()).doOnComplete {
+            Log.w("Complete:::", "two")
+        }.doOnError {
+            Log.e("Error", "${it.message}")
+        }
 
         compositeDisposable.add(
-            observable.subscribe { userList ->
-                userList.forEach {
-                    Log.w("userName", "${it[0].firstName}")
+            observable.subscribe {
+                it.doOnSuccess {
+                    Log.w("Success::", "${it.size}")
                 }
             }
-        )
+        )*/
+
+        //compositeDisposable.dispose()
+        
     }
 
 }
